@@ -29,6 +29,7 @@
 #include <QToolTip>
 #include <QMouseEvent>
 #include <QKeyEvent>
+#include <QRegularExpression>
 
 #include <kio_version.h>
 #if KIO_VERSION < QT_VERSION_CHECK(5, 71, 0)
@@ -65,6 +66,7 @@ FileFilterHotSpot::FileFilterHotSpot(int startLine, int startColumn, int endLine
 
 void FileFilterHotSpot::activate(QObject *)
 {
+    // Used to fallback to opening the url with the system default application
     auto openUrl = [](const QString &filePath) {
 #if KIO_VERSION < QT_VERSION_CHECK(5, 71, 0)
         new KRun(QUrl::fromLocalFile(filePath), QApplication::activeWindow());
@@ -114,6 +116,13 @@ void FileFilterHotSpot::activate(QObject *)
         qCDebug(KonsoleDebug) << "editorCmd:" << editorCmd;
 
         KService::Ptr service(new KService(QString(), editorCmd, QString()));
+
+#if KIO_VERSION < QT_VERSION_CHECK(5, 71, 0)
+        const bool success = KRun::runService(*service, {}, QApplication::activeWindow());
+        if (!success) {
+            openUrl(path);
+        }
+#else
         // ApplicationLauncherJob is better at reporting errors to the user than
         // CommandLauncherJob; no need to call job->setUrls() because the url is
         // already part of editorCmd
@@ -129,7 +138,7 @@ void FileFilterHotSpot::activate(QObject *)
             }
         });
         job->start();
-
+#endif
         return;
     }
 
