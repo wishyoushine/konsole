@@ -30,10 +30,15 @@
 #include <QMouseEvent>
 #include <QKeyEvent>
 
-#include <KIO/CommandLauncherJob>
+#include <kio_version.h>
+#if KIO_VERSION < QT_VERSION_CHECK(5, 71, 0)
+#include <KRun>
+#else
 #include <KIO/ApplicationLauncherJob>
-#include <KIO/JobUiDelegate>
 #include <KIO/OpenUrlJob>
+#endif
+
+#include <KIO/JobUiDelegate>
 #include <KLocalizedString>
 #include <KFileItemListProperties>
 #include <KMessageBox>
@@ -60,11 +65,15 @@ FileFilterHotSpot::FileFilterHotSpot(int startLine, int startColumn, int endLine
 
 void FileFilterHotSpot::activate(QObject *)
 {
-    auto openUrl = [](const QString filePath) {
+    auto openUrl = [](const QString &filePath) {
+#if KIO_VERSION < QT_VERSION_CHECK(5, 71, 0)
+        new KRun(QUrl::fromLocalFile(filePath), QApplication::activeWindow());
+#else
         auto *job = new KIO::OpenUrlJob(QUrl::fromLocalFile(filePath));
         job->setUiDelegate(new KIO::JobUiDelegate(KJobUiDelegate::AutoHandlingEnabled, QApplication::activeWindow()));
         job->setRunExecutables(false); // Always open, e.g. shell scripts, as text
         job->start();
+#endif
     };
 
     // Output of e.g.:
